@@ -18,8 +18,6 @@ from pathlib import Path
 from typing import Any
 
 from .env_config import get_env, get_env_bool, get_env_int, load_dotenv
-from .logging_config import configure_logging
-
 
 LOG = logging.getLogger(__name__)
 
@@ -55,12 +53,17 @@ class TDLibError(RuntimeError):
 class TDJsonClient:
     """Minimal TDLib JSON wrapper built on top of tdjson."""
 
-    def __init__(self, library_path: str | None = None, receive_timeout: float = 1.0) -> None:
+    def __init__(
+        self,
+        library_path: str | None = None,
+        receive_timeout: float = 1.0,
+    ) -> None:
         tdjson_path = library_path or ctypes.util.find_library("tdjson")
         if not tdjson_path:
             raise SystemExit(
                 "Unable to find the TDLib shared library `tdjson`.\n"
-                "Install TDLib first, then pass --tdjson-lib /full/path/to/libtdjson.dylib "
+                "Install TDLib first, then pass "
+                "--tdjson-lib /full/path/to/libtdjson.dylib "
                 "or make it discoverable via the system library path."
             )
 
@@ -132,6 +135,7 @@ class TDJsonClient:
             if update_sink is not None:
                 update_sink.append(event)
 
+
 def resolve_config() -> TelegramConfig:
     load_dotenv()
     config = TelegramConfig(
@@ -144,7 +148,9 @@ def resolve_config() -> TelegramConfig:
         tdjson_lib=get_env("TDJSON_LIB"),
         state_dir=get_env("TDLIB_STATE_DIR", default=".tdlib-state") or ".tdlib-state",
         database_key=get_env("TDLIB_DATABASE_KEY", default="") or "",
-        system_language_code=get_env("TDLIB_SYSTEM_LANGUAGE_CODE", default="en") or "en",
+        system_language_code=(
+            get_env("TDLIB_SYSTEM_LANGUAGE_CODE", default="en") or "en"
+        ),
         dump_raw=get_env_bool("TDLIB_DUMP_RAW"),
         verbose=get_env_bool("TDLIB_VERBOSE"),
     )
@@ -156,7 +162,8 @@ def resolve_config() -> TelegramConfig:
         raise SystemExit("Telegram listener requires TG_API_HASH.")
     if config.channel_chat_id is None and not config.channel_username:
         raise SystemExit(
-            "Telegram listener requires one of TG_CHANNEL_CHAT_ID or TG_CHANNEL_USERNAME."
+            "Telegram listener requires one of TG_CHANNEL_CHAT_ID "
+            "or TG_CHANNEL_USERNAME."
         )
     return config
 
@@ -191,7 +198,10 @@ def tdlib_parameters(args: TelegramConfig, state_dir: Path) -> dict[str, Any]:
     }
 
 
-def drain_updates(buffered_updates: list[dict[str, Any]], auth_state: dict[str, Any]) -> None:
+def drain_updates(
+    buffered_updates: list[dict[str, Any]],
+    auth_state: dict[str, Any],
+) -> None:
     while buffered_updates:
         event = buffered_updates.pop(0)
         if event.get("@type") == "updateAuthorizationState":
@@ -271,7 +281,9 @@ def handle_authorization_state(
             f"Open the provided link in Telegram: {link}"
         )
     elif state_type == "authorizationStateWaitRegistration":
-        raise SystemExit("This account is not registered yet; automatic signup isn't implemented.")
+        raise SystemExit(
+            "This account is not registered yet; automatic signup isn't implemented."
+        )
     else:
         raise SystemExit(f"Unsupported TDLib authorization state: {state_type}")
 
@@ -291,7 +303,13 @@ def authorize(client: TDJsonClient, args: TelegramConfig, state_dir: Path) -> No
             update_sink=buffered_updates,
         )
     }
-    while not handle_authorization_state(client, args, state_dir, auth_state, buffered_updates):
+    while not handle_authorization_state(
+        client,
+        args,
+        state_dir,
+        auth_state,
+        buffered_updates,
+    ):
         if buffered_updates:
             drain_updates(buffered_updates, auth_state)
             continue
@@ -307,7 +325,9 @@ def authorize(client: TDJsonClient, args: TelegramConfig, state_dir: Path) -> No
     LOG.info(
         "authorized as id=%s name=%s username=%s",
         me.get("id"),
-        " ".join(part for part in [me.get("first_name"), me.get("last_name")] if part).strip(),
+        " ".join(
+            part for part in [me.get("first_name"), me.get("last_name")] if part
+        ).strip(),
         usernames[0] if usernames else None,
     )
 
@@ -316,21 +336,32 @@ def resolve_target_channel(client: TDJsonClient, args: TelegramConfig) -> Target
     if args.channel_chat_id is not None:
         chat = client.request({"@type": "getChat", "chat_id": args.channel_chat_id})
     else:
-        username = args.channel_username.lstrip("@")
-        chat = client.request({"@type": "searchPublicChat", "username": username})
+        if args.channel_username is None:
+            raise SystemExit(
+                "TG_CHANNEL_USERNAME is required when TG_CHANNEL_CHAT_ID is unset."
+            )
+        channel_username = args.channel_username.lstrip("@")
+        chat = client.request(
+            {"@type": "searchPublicChat", "username": channel_username}
+        )
 
     chat_type = chat.get("type", {})
-    if chat_type.get("@type") != "chatTypeSupergroup" or not chat_type.get("is_channel"):
+    if (
+        chat_type.get("@type") != "chatTypeSupergroup"
+        or not chat_type.get("is_channel")
+    ):
         raise SystemExit(
             "Resolved chat is not a channel. TDLib marks channels as "
             "`chatTypeSupergroup` with `is_channel=true`."
         )
 
     supergroup_id = int(chat_type["supergroup_id"])
-    supergroup = client.request({"@type": "getSupergroup", "supergroup_id": supergroup_id})
+    supergroup = client.request(
+        {"@type": "getSupergroup", "supergroup_id": supergroup_id}
+    )
     usernames = supergroup.get("usernames", {})
     active_usernames = usernames.get("active_usernames") or []
-    username = active_usernames[0] if active_usernames else None
+    username: str | None = active_usernames[0] if active_usernames else None
 
     channel = TargetChannel(
         chat_id=int(chat["id"]),
@@ -374,12 +405,14 @@ def extract_message_text(content: dict[str, Any]) -> str:
 def should_emit_message(message: dict[str, Any], target: TargetChannel) -> bool:
     if message.get("chat_id") != target.chat_id:
         return False
-    if message.get("is_outgoing"):
-        return False
-    return True
+    return not message.get("is_outgoing")
 
 
-def emit_message(message: dict[str, Any], target: TargetChannel, dump_raw: bool) -> None:
+def emit_message(
+    message: dict[str, Any],
+    target: TargetChannel,
+    dump_raw: bool,
+) -> None:
     if dump_raw:
         print(json.dumps(message, ensure_ascii=False, sort_keys=True))
         return
@@ -407,6 +440,7 @@ def listen_for_channel_messages(
     active_stop_event = stop_event or threading.Event()
 
     if install_signal_handlers:
+
         def request_stop(signum: int, _frame: Any) -> None:
             if active_stop_event.is_set():
                 return
@@ -425,7 +459,9 @@ def listen_for_channel_messages(
         if event_type == "updateAuthorizationState":
             state = event.get("authorization_state", {}).get("@type")
             if state != "authorizationStateReady":
-                raise SystemExit(f"TDLib authorization state changed while listening: {state}")
+                raise SystemExit(
+                    f"TDLib authorization state changed while listening: {state}"
+                )
             continue
 
         if event_type != "updateNewMessage":

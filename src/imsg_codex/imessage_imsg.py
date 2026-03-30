@@ -7,15 +7,12 @@ import json
 import logging
 import signal
 import subprocess
-import sys
 import threading
 from collections.abc import Iterable
 from dataclasses import dataclass
 from typing import Any
 
-from .env_config import get_env, get_env_bool, load_dotenv
-from .logging_config import configure_logging
-
+from .env_config import get_env, get_env_bool
 
 LOG = logging.getLogger(__name__)
 
@@ -108,9 +105,7 @@ def is_incoming_user_message(message: dict[str, Any]) -> bool:
         return False
     if message.get("from_me") is True:
         return False
-    if message.get("text") in (None, ""):
-        return False
-    return True
+    return message.get("text") not in (None, "")
 
 
 def chat_key_for_message(message: dict[str, Any]) -> str:
@@ -180,7 +175,7 @@ def run(
         LOG.info("iMessage listener disabled via IMESSAGE_ENABLED=false")
         return 0
 
-    process = start_rpc_process(config)
+    process = start_rpc_process()
 
     shutdown_requested = threading.Event()
     subscription_id: int | None = None

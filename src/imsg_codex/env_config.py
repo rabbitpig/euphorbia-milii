@@ -7,7 +7,6 @@ import os
 from collections.abc import Sequence
 from pathlib import Path
 
-
 TRUE_VALUES = {"1", "true", "yes", "on"}
 
 
@@ -34,6 +33,10 @@ def _load_dotenv(path: str | Path = ".env", *, overwrite: bool = False) -> None:
         if not overwrite and key in os.environ:
             continue
         os.environ[key] = value
+
+
+def load_dotenv(path: str | Path = ".env", *, overwrite: bool = False) -> None:
+    _load_dotenv(path, overwrite=overwrite)
 
 
 def parse_env_value(value: str) -> str:

@@ -3,58 +3,62 @@
 
 from __future__ import annotations
 
-import asyncio
 import base64
 import contextlib
-import json
 import logging
-import queue
-import threading
-from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
-from typing import Any, Protocol
+from typing import Literal
 
-from openai_codex_sdk import Codex, TextInput, ThreadOptions
+from openai_codex_sdk import Codex, ThreadOptions
 
 from .env_config import get_env
 
-
 LOG = logging.getLogger(__name__)
-STOP = object()
 RUNTIME_DIR = Path("runtime")
 IMESSAGE_CHANNEL_DIR = RUNTIME_DIR / "channels" / "imessage"
 THREAD_LOCK_DIR = RUNTIME_DIR / "threads"
 THREAD_LOCK_TTL = timedelta(minutes=30)
-
-
-class CodexWorkerConfig(Protocol):
-    model: str
-    codex_cwd: str
-    reasoning_effort: str
-    developer_instructions: str
+ReasoningEffort = Literal["minimal", "low", "medium", "high"]
 
 
 @dataclass(slots=True)
 class WorkerConfig:
     model: str
     codex_cwd: str
-    reasoning_effort: str
+    reasoning_effort: ReasoningEffort
     developer_instructions: str
+
+
+def resolve_reasoning_effort() -> ReasoningEffort:
+    configured = get_env("IMSG_CODEX_REASONING_EFFORT", default="medium") or "medium"
+    if configured == "minimal":
+        return "minimal"
+    if configured == "low":
+        return "low"
+    if configured == "medium":
+        return "medium"
+    if configured == "high":
+        return "high"
+    LOG.warning(
+        "unsupported IMSG_CODEX_REASONING_EFFORT=%r, falling back to 'medium'",
+        configured,
+    )
+    return "medium"
 
 
 def resolve_config() -> WorkerConfig:
     return WorkerConfig(
         model=get_env("IMSG_CODEX_MODEL", default="gpt-5.4-mini") or "gpt-5.4-mini",
         codex_cwd=get_env("IMSG_CODEX_CWD", default=".") or ".",
-        reasoning_effort=get_env("IMSG_CODEX_REASONING_EFFORT", default="medium")
-        or "medium",
+        reasoning_effort=resolve_reasoning_effort(),
         developer_instructions=(
             get_env(
                 "IMSG_CODEX_DEVELOPER_INSTRUCTIONS",
                 default=(
-                    "You are replying to an iMessage sender. Keep responses concise, natural, "
+                    "You are replying to an iMessage sender. "
+                    "Keep responses concise, natural, "
                     "and directly answer the user's latest message."
                 ),
             )
@@ -64,17 +68,17 @@ def resolve_config() -> WorkerConfig:
 
 
 def build_thread_options() -> ThreadOptions:
-    config=resolve_config()
+    config = resolve_config()
     return ThreadOptions(
-            model = config.model,
-            sandboxMode= "read-only",
-            workingDirectory= config.codex_cwd,
-            skipGitRepoCheck = True,
-            modelReasoningEffort = config.reasoning_effort,
-            networkAccessEnabled = True,
-            webSearchEnabled = True,
-            approvalPolicy = "never",
-            additionalDirectories = None,
+        model=config.model,
+        sandboxMode="read-only",
+        workingDirectory=config.codex_cwd,
+        skipGitRepoCheck=True,
+        modelReasoningEffort=config.reasoning_effort,
+        networkAccessEnabled=True,
+        webSearchEnabled=True,
+        approvalPolicy="never",
+        additionalDirectories=None,
     )
 
 
@@ -83,12 +87,14 @@ def create_codex_client() -> Codex:
         from openai_codex_sdk import Codex
     except ImportError as exc:  # pragma: no cover - import guard for first-run setup
         raise SystemExit(
-            "Missing dependency `openai-codex-sdk`. Install project dependencies first, "
+            "Missing dependency `openai-codex-sdk`. "
+            "Install project dependencies first, "
             "for example with `uv sync`."
         ) from exc
     return Codex()
 
-codex=create_codex_client()
+
+codex = create_codex_client()
 
 
 def _conversation_thread_path(conversation_id: str) -> Path:
@@ -139,6 +145,7 @@ def _release_thread_lock(lock_path: Path | None) -> None:
         return
     lock_path.unlink(missing_ok=True)
 
+
 async def generate_reply(
     biz_id: str,
     message: str,
@@ -152,7 +159,7 @@ async def generate_reply(
     thread_id = None
     if biz_id is not None:
         thread_id = _read_thread_id(biz_id)
-    
+
     if thread_id is None:
         thread = codex.start_thread(thread_options)
     else:
@@ -162,8 +169,10 @@ async def generate_reply(
         result = await thread.run(message)
 
         if thread_id is None and biz_id is not None:
+            if thread.id is None:
+                raise RuntimeError("Codex thread id is missing after thread creation.")
             _write_thread_id(biz_id, thread.id)
     finally:
         _release_thread_lock(lock_path)
-    
+
     return result.final_response.strip() if result.final_response else None

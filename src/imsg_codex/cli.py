@@ -13,10 +13,9 @@ from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from typing import Any
 
-from . import imessage_imsg , telegram
+from . import imessage_imsg, telegram
 from .env_config import get_env_bool, load_dotenv
 from .logging_config import configure_logging
-
 
 LOG = logging.getLogger("imsg-codex-main")
 Listener = Callable[..., int]
@@ -86,7 +85,10 @@ def build_listener_threads(
     return threads
 
 
-def shutdown_listeners(stop_event: threading.Event, threads: Sequence[threading.Thread]) -> None:
+def shutdown_listeners(
+    stop_event: threading.Event,
+    threads: Sequence[threading.Thread],
+) -> None:
     stop_event.set()
     for thread in threads:
         thread.join()
@@ -94,7 +96,9 @@ def shutdown_listeners(stop_event: threading.Event, threads: Sequence[threading.
 
 def main() -> int:
     if len(sys.argv) > 1:
-        raise SystemExit("imsg-codex no longer accepts CLI arguments; configure it via .env.")
+        raise SystemExit(
+            "imsg-codex no longer accepts CLI arguments; configure it via .env."
+        )
 
     configure_logging(resolve_verbose())
 
@@ -103,7 +107,8 @@ def main() -> int:
     threads = build_listener_threads(stop_event, results)
     if not threads:
         LOG.error(
-            "no listeners enabled; set IMESSAGE_ENABLED=true or TG_LISTENER_ENABLED=true"
+            "no listeners enabled; set IMESSAGE_ENABLED=true "
+            "or TG_LISTENER_ENABLED=true"
         )
         return 2
 
@@ -126,7 +131,11 @@ def main() -> int:
             result = results.get()
             completed[result.name] = result
             if result.error is not None:
-                LOG.error("%s listener crashed:\n%s", result.name, result.traceback_text)
+                LOG.error(
+                    "%s listener crashed:\n%s",
+                    result.name,
+                    result.traceback_text,
+                )
             else:
                 LOG.info("%s listener exited rc=%s", result.name, result.rc)
             stop_event.set()
@@ -136,6 +145,6 @@ def main() -> int:
     for result in completed.values():
         if result.error is not None:
             return 1
-        if result.rc not in (None, 0):
+        if result.rc is not None and result.rc != 0:
             return result.rc
     return 0
