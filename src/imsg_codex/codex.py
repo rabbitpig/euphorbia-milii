@@ -18,7 +18,7 @@ from .env_config import get_env
 LOG = logging.getLogger(__name__)
 RUNTIME_DIR = Path("runtime")
 IMESSAGE_CHANNEL_DIR = RUNTIME_DIR / "channels" / "imessage"
-THREAD_LOCK_DIR = RUNTIME_DIR / "threads"
+THREAD_LOCK_DIR = RUNTIME_DIR / "channels" / "lock"
 THREAD_LOCK_TTL = timedelta(minutes=30)
 ReasoningEffort = Literal["minimal", "low", "medium", "high"]
 
@@ -32,7 +32,7 @@ class WorkerConfig:
 
 
 def resolve_reasoning_effort() -> ReasoningEffort:
-    configured = get_env("IMSG_CODEX_REASONING_EFFORT", default="medium") or "medium"
+    configured = get_env("CODEX_REASONING_EFFORT", default="medium") or "medium"
     if configured == "minimal":
         return "minimal"
     if configured == "low":
@@ -42,7 +42,7 @@ def resolve_reasoning_effort() -> ReasoningEffort:
     if configured == "high":
         return "high"
     LOG.warning(
-        "unsupported IMSG_CODEX_REASONING_EFFORT=%r, falling back to 'medium'",
+        "unsupported CODEX_REASONING_EFFORT=%r, falling back to 'medium'",
         configured,
     )
     return "medium"
@@ -50,17 +50,13 @@ def resolve_reasoning_effort() -> ReasoningEffort:
 
 def resolve_config() -> WorkerConfig:
     return WorkerConfig(
-        model=get_env("IMSG_CODEX_MODEL", default="gpt-5.4-mini") or "gpt-5.4-mini",
-        codex_cwd=get_env("IMSG_CODEX_CWD", default=".") or ".",
+        model=get_env("CODEX_MODEL", default="gpt-5.4-mini") or "gpt-5.4-mini",
+        codex_cwd=get_env("CODEX_CWD", default=".") or ".",
         reasoning_effort=resolve_reasoning_effort(),
         developer_instructions=(
             get_env(
-                "IMSG_CODEX_DEVELOPER_INSTRUCTIONS",
-                default=(
-                    "You are replying to an iMessage sender. "
-                    "Keep responses concise, natural, "
-                    "and directly answer the user's latest message."
-                ),
+                "CODEX_DEVELOPER_INSTRUCTIONS",
+                default=("You are helperful assistant. "),
             )
             or ""
         ),

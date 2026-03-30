@@ -17,7 +17,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from .env_config import get_env, get_env_bool, get_env_int, load_dotenv
+from .env_config import get_env, get_env_bool, get_env_int
 
 LOG = logging.getLogger(__name__)
 
@@ -137,7 +137,6 @@ class TDJsonClient:
 
 
 def resolve_config() -> TelegramConfig:
-    load_dotenv()
     config = TelegramConfig(
         enabled=get_env_bool("TG_LISTENER_ENABLED", default=True),
         api_id=get_env_int("TG_API_ID"),
@@ -346,9 +345,8 @@ def resolve_target_channel(client: TDJsonClient, args: TelegramConfig) -> Target
         )
 
     chat_type = chat.get("type", {})
-    if (
-        chat_type.get("@type") != "chatTypeSupergroup"
-        or not chat_type.get("is_channel")
+    if chat_type.get("@type") != "chatTypeSupergroup" or not chat_type.get(
+        "is_channel"
     ):
         raise SystemExit(
             "Resolved chat is not a channel. TDLib marks channels as "

@@ -31,7 +31,7 @@ class ListenerResult:
 
 def resolve_verbose() -> bool:
     load_dotenv()
-    return get_env_bool("IMSG_CODEX_VERBOSE", "TDLIB_VERBOSE")
+    return get_env_bool("CODEX_VERBOSE", "TDLIB_VERBOSE")
 
 
 def run_listener(
