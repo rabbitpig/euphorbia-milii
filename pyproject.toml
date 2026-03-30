@@ -1,0 +1,23 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "imsg-codex"
+version = "0.1.0"
+requires-python = ">=3.14,<3.15"
+dependencies = [
+    "openai-codex-sdk>=0.1.0",
+    "requests",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.0.0",
+]
+
+[project.scripts]
+imsg-codex = "imsg_codex.cli:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/imsg_codex"]
