@@ -4,3 +4,7 @@ __pycache__/
 *.pyc
 *.pyo
 .venv/
+.mypy_cache
+.pytest_cache
+.ruff_cache
+.tdlib-state

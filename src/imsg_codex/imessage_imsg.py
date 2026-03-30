@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
 import signal
@@ -12,6 +13,7 @@ from collections.abc import Iterable
 from dataclasses import dataclass
 from typing import Any
 
+from .codex import generate_reply
 from .env_config import get_env, get_env_bool
 
 LOG = logging.getLogger(__name__)
@@ -311,6 +313,19 @@ def run(
                 chat_key,
                 format_json_for_log(message),
             )
+
+            reply_text = asyncio.run(
+                generate_reply(chat_key, str(message.get("text", "")))
+            )
+            try:
+                send_reply(
+                    message,
+                    reply_text
+                    if reply_text is not None
+                    else "no reply generated for chat",
+                )
+            except Exception:
+                LOG.exception("failed to send generated reply for chat=%s", chat_key)
     finally:
         if process.poll() is None:
             try:
