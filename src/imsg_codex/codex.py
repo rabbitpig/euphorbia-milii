@@ -16,19 +16,20 @@ from openai_codex_sdk import Codex, ThreadOptions
 from .env_config import get_env
 
 LOG = logging.getLogger(__name__)
-RUNTIME_DIR = Path("runtime")
-IMESSAGE_CHANNEL_DIR = RUNTIME_DIR / "channels" / "imessage"
-THREAD_LOCK_DIR = RUNTIME_DIR / "channels" / "lock"
-THREAD_LOCK_TTL = timedelta(minutes=30)
+
+
 ReasoningEffort = Literal["minimal", "low", "medium", "high"]
 
 
-@dataclass
+@dataclass(slots=True)
 class WorkerConfig:
     model: str
     codex_cwd: str
     reasoning_effort: ReasoningEffort
     developer_instructions: str
+    channel_imessage_dir: str
+    channel_thread_lock_dir: str
+    channel_thread_lock_ttl: timedelta
 
 
 def resolve_reasoning_effort() -> ReasoningEffort:
@@ -54,6 +55,9 @@ def resolve_config() -> WorkerConfig:
         codex_cwd=get_env("CODEX_CWD"),
         reasoning_effort=resolve_reasoning_effort(),
         developer_instructions=get_env("CODEX_DEVELOPER_INSTRUCTIONS"),
+        channel_imessage_dir=get_env("CODEX_CHANNEL_IMESSAGE_DIR"),
+        channel_thread_lock_dir=get_env("CODEX_THREAD_LOCK_DIR"),
+        channel_thread_lock_ttl=timedelta(minutes=30),
     )
 
 
@@ -88,8 +92,9 @@ codex = create_codex_client()
 
 
 def _conversation_thread_path(conversation_id: str) -> Path:
+    config = resolve_config()
     encoded = base64.urlsafe_b64encode(conversation_id.encode("utf-8")).decode("ascii")
-    return IMESSAGE_CHANNEL_DIR / encoded
+    return Path(config.channel_imessage_dir, encoded).resolve()
 
 
 def _read_thread_id(conversation_id: str) -> str | None:
@@ -108,12 +113,16 @@ def _write_thread_id(conversation_id: str, thread_id: str) -> None:
 
 
 def _thread_lock_path(biz_id: str) -> Path:
+    config = resolve_config()
     encoded = base64.urlsafe_b64encode(biz_id.encode("utf-8")).decode("ascii")
-    return THREAD_LOCK_DIR / f"{encoded}.lock"
+    return Path(config.channel_thread_lock_dir, f"{encoded}.lock")
 
 
 def _acquire_thread_lock(biz_id: str) -> Path | None:
+    config = resolve_config()
+
     lock_path = _thread_lock_path(biz_id)
+    # TODO 这里锁的实现是否存在问题
     lock_path.parent.mkdir(parents=True, exist_ok=True)
 
     now = datetime.now(UTC)
@@ -122,7 +131,7 @@ def _acquire_thread_lock(biz_id: str) -> Path | None:
         if raw_value:
             with contextlib.suppress(ValueError):
                 locked_at = datetime.fromtimestamp(float(raw_value), tz=UTC)
-                if now - locked_at < THREAD_LOCK_TTL:
+                if now - locked_at < config.channel_thread_lock_ttl:
                     return None
         lock_path.unlink(missing_ok=True)
 

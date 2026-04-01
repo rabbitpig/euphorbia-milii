@@ -93,7 +93,7 @@ def get_env_list(*names: str) -> list[str]:
 def get_env_list_optional(
     *names: str, default: Sequence[str] | None = None
 ) -> list[str]:
-    value = get_env(*names)
+    value = get_env_optional(*names, default=None)
     if value is None:
         return list(default) if default is not None else []
     return [item.strip() for item in value.split(",") if item.strip()]
