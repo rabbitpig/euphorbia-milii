@@ -13,7 +13,9 @@ from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from typing import Any
 
-from . import imessage_imsg, telegram
+from apscheduler.schedulers.background import BackgroundScheduler
+
+from . import imessage_imsg, scheduler, telegram
 from .env_config import get_env_bool, load_dotenv
 from .logging_config import configure_logging
 
@@ -94,6 +96,16 @@ def shutdown_listeners(
         thread.join()
 
 
+def maybe_start_scheduler() -> BackgroundScheduler | None:
+    if not scheduler.resolve_enabled():
+        return None
+
+    background_scheduler = scheduler.create_scheduler()
+    background_scheduler.start()
+    LOG.info("started APScheduler with %s job(s)", len(background_scheduler.get_jobs()))
+    return background_scheduler
+
+
 def main() -> int:
     if len(sys.argv) > 1:
         raise SystemExit(
@@ -105,10 +117,11 @@ def main() -> int:
     stop_event = threading.Event()
     results: queue.Queue[ListenerResult] = queue.Queue()
     threads = build_listener_threads(stop_event, results)
-    if not threads:
+    background_scheduler = maybe_start_scheduler()
+    if not threads and background_scheduler is None:
         LOG.error(
-            "no listeners enabled; set IMESSAGE_ENABLED=true "
-            "or TG_LISTENER_ENABLED=true"
+            "no listeners or scheduler enabled; set IMESSAGE_ENABLED=true, "
+            "TG_LISTENER_ENABLED=true, or SCHEDULER_ENABLED=true"
         )
         return 2
 
@@ -127,6 +140,10 @@ def main() -> int:
 
     completed: dict[str, ListenerResult] = {}
     try:
+        if not threads:
+            stop_event.wait()
+            return 0
+
         while len(completed) < len(threads):
             result = results.get()
             completed[result.name] = result
@@ -140,6 +157,8 @@ def main() -> int:
                 LOG.info("%s listener exited rc=%s", result.name, result.rc)
             stop_event.set()
     finally:
+        if background_scheduler is not None:
+            background_scheduler.shutdown(wait=False)
         shutdown_listeners(stop_event, threads)
 
     for result in completed.values():

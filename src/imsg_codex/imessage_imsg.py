@@ -28,6 +28,14 @@ class IMessageConfig:
     log_level: str
 
 
+@dataclass(slots=True)
+class IMessageSendTarget:
+    chat_id: str | None = None
+    chat_guid: str | None = None
+    chat_identifier: str | None = None
+    recipient: str | None = None
+
+
 def resolve_config() -> IMessageConfig:
     """Read listener and transport configuration from env."""
 
@@ -126,27 +134,72 @@ def build_send_command(
 ) -> list[str]:
     """Build an `imsg send` command targeting the same chat as the source message."""
 
+    target = IMessageSendTarget(
+        chat_id=(
+            str(message["chat_id"])
+            if message.get("chat_id") not in (None, "")
+            else None
+        ),
+        chat_guid=(
+            str(message["chat_guid"])
+            if message.get("chat_guid") not in (None, "")
+            else None
+        ),
+        chat_identifier=(
+            str(message["chat_identifier"])
+            if message.get("chat_identifier") not in (None, "")
+            else None
+        ),
+        recipient=(
+            str(message["sender"])
+            if message.get("sender") not in (None, "")
+            else None
+        ),
+    )
+    return build_send_command_for_target(target, reply_text)
+
+
+def build_send_command_for_target(
+    target: IMessageSendTarget,
+    text: str,
+) -> list[str]:
+    """Build an `imsg send` command for an explicit target."""
+
     config = resolve_config()
     command = [config.binary, "send", "--json"]
 
-    chat_id = message.get("chat_id")
-    chat_guid = message.get("chat_guid")
-    chat_identifier = message.get("chat_identifier")
-    sender = message.get("sender")
-
-    if chat_id not in (None, ""):
-        command.extend(["--chat-id", str(chat_id)])
-    elif chat_guid not in (None, ""):
-        command.extend(["--chat-guid", str(chat_guid)])
-    elif chat_identifier not in (None, ""):
-        command.extend(["--chat-identifier", str(chat_identifier)])
-    elif sender not in (None, ""):
-        command.extend(["--to", str(sender)])
+    if target.chat_id not in (None, ""):
+        command.extend(["--chat-id", target.chat_id])
+    elif target.chat_guid not in (None, ""):
+        command.extend(["--chat-guid", target.chat_guid])
+    elif target.chat_identifier not in (None, ""):
+        command.extend(["--chat-identifier", target.chat_identifier])
+    elif target.recipient not in (None, ""):
+        command.extend(["--to", target.recipient])
     else:
-        raise ValueError(f"unable to determine reply target from message: {message}")
+        raise ValueError(f"unable to determine iMessage target from: {target!r}")
 
-    command.extend(["--text", reply_text])
+    command.extend(["--text", text])
     return command
+
+
+def send_message_to_target(
+    target: IMessageSendTarget,
+    text: str,
+) -> None:
+    """Send an iMessage to an explicit target."""
+
+    command = build_send_command_for_target(target, text)
+    LOG.info("sending iMessage via explicit target")
+    completed = subprocess.run(command, check=False, text=True, capture_output=True)
+    if completed.returncode != 0:
+        raise RuntimeError(
+            "failed to send iMessage: "
+            f"command={command!r} "
+            f"rc={completed.returncode} "
+            f"stdout={completed.stdout.strip()!r} "
+            f"stderr={completed.stderr.strip()!r}"
+        )
 
 
 def send_reply(
@@ -155,14 +208,30 @@ def send_reply(
 ) -> None:
     """Send a reply message back through the `imsg` CLI."""
 
-    command = build_send_command(message, reply_text)
     LOG.info("sending reply via chat=%s", chat_key_for_message(message))
-    completed = subprocess.run(command, check=False, text=True, capture_output=True)
-    if completed.returncode != 0:
-        raise RuntimeError(
-            "failed to send iMessage reply: "
-            f"rc={completed.returncode} stderr={completed.stderr.strip()!r}"
-        )
+    target = IMessageSendTarget(
+        chat_id=(
+            str(message["chat_id"])
+            if message.get("chat_id") not in (None, "")
+            else None
+        ),
+        chat_guid=(
+            str(message["chat_guid"])
+            if message.get("chat_guid") not in (None, "")
+            else None
+        ),
+        chat_identifier=(
+            str(message["chat_identifier"])
+            if message.get("chat_identifier") not in (None, "")
+            else None
+        ),
+        recipient=(
+            str(message["sender"])
+            if message.get("sender") not in (None, "")
+            else None
+        ),
+    )
+    send_message_to_target(target, reply_text)
 
 
 def run(
