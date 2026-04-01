@@ -80,6 +80,18 @@ wheels = [
 ]
 
 [[package]]
+name = "concurrent-log-handler"
+version = "0.9.29"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "portalocker" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/9c/2c/ba185acc438cff6b58cd8f8dec27e7f4fcabf6968a1facbb6d0cacbde7fe/concurrent_log_handler-0.9.29.tar.gz", hash = "sha256:bc37a76d3f384cbf4a98f693ebd770543edc0f4cd5c6ab6bc70e9e1d7d582265", size = 42114, upload-time = "2026-02-22T18:18:25.758Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/4a/f3/3e3188fdb3e53c6343fd1c7de41c55d4db626f07db3877eae77b28d58bd2/concurrent_log_handler-0.9.29-py3-none-any.whl", hash = "sha256:0d6c077fbaef2dae49a25975dcf72a602fe0a6a4ce80a3b7c37696d37e10459a", size = 32052, upload-time = "2026-02-22T18:18:24.558Z" },
+]
+
+[[package]]
 name = "distlib"
 version = "0.4.0"
 source = { registry = "https://pypi.org/simple" }
@@ -120,7 +132,9 @@ name = "imsg-codex"
 version = "0.1.0"
 source = { editable = "." }
 dependencies = [
+    { name = "concurrent-log-handler" },
     { name = "openai-codex-sdk" },
+    { name = "python-telegram" },
     { name = "requests" },
 ]
 
@@ -135,7 +149,9 @@ dev = [
 
 [package.metadata]
 requires-dist = [
+    { name = "concurrent-log-handler", specifier = ">=0.9.28" },
     { name = "openai-codex-sdk", specifier = ">=0.1.0" },
+    { name = "python-telegram" },
     { name = "requests" },
 ]
 
@@ -280,6 +296,18 @@ wheels = [
 ]
 
 [[package]]
+name = "portalocker"
+version = "3.2.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "pywin32", marker = "sys_platform == 'win32'" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/5e/77/65b857a69ed876e1951e88aaba60f5ce6120c33703f7cb61a3c894b8c1b6/portalocker-3.2.0.tar.gz", hash = "sha256:1f3002956a54a8c3730586c5c77bf18fae4149e07eaf1c29fc3faf4d5a3f89ac", size = 95644, upload-time = "2025-06-14T13:20:40.03Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/4b/a6/38c8e2f318bf67d338f4d629e93b0b4b9af331f455f0390ea8ce4a099b26/portalocker-3.2.0-py3-none-any.whl", hash = "sha256:3cdc5f565312224bc570c49337bd21428bba0ef363bbcf58b9ef4a9f11779968", size = 22424, upload-time = "2025-06-14T13:20:38.083Z" },
+]
+
+[[package]]
 name = "pre-commit"
 version = "4.5.1"
 source = { registry = "https://pypi.org/simple" }
@@ -388,6 +416,28 @@ wheels = [
 ]
 
 [[package]]
+name = "python-telegram"
+version = "0.19.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "telegram-text" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/49/76/f102f251f55fa016093f14aa3373c354fef3a2a7cc035dea0d8783c69b4b/python_telegram-0.19.0.tar.gz", hash = "sha256:7b5b2da3d01d4cf5776c92f91fdd35a0f98976eec2356726b338f59ba01d1373", size = 20313048, upload-time = "2024-06-23T16:30:05.258Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/02/17/8995b7d036c9762f90964fc5897ab46458fcfc1ad1dd27fa063f726854b9/python_telegram-0.19.0-py3-none-any.whl", hash = "sha256:1e1d5e065a000580eeaeb5b608e410651320f5d6c804e8e4e7568b6b614071bc", size = 20436958, upload-time = "2024-06-23T16:30:00.344Z" },
+]
+
+[[package]]
+name = "pywin32"
+version = "311"
+source = { registry = "https://pypi.org/simple" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/c9/31/097f2e132c4f16d99a22bfb777e0fd88bd8e1c634304e102f313af69ace5/pywin32-311-cp314-cp314-win32.whl", hash = "sha256:b7a2c10b93f8986666d0c803ee19b5990885872a7de910fc460f9b0c2fbf92ee", size = 8840714, upload-time = "2025-07-14T20:13:32.449Z" },
+    { url = "https://files.pythonhosted.org/packages/90/4b/07c77d8ba0e01349358082713400435347df8426208171ce297da32c313d/pywin32-311-cp314-cp314-win_amd64.whl", hash = "sha256:3aca44c046bd2ed8c90de9cb8427f581c479e594e99b5c0bb19b29c10fd6cb87", size = 9656800, upload-time = "2025-07-14T20:13:34.312Z" },
+    { url = "https://files.pythonhosted.org/packages/c0/d2/21af5c535501a7233e734b8af901574572da66fcc254cb35d0609c9080dd/pywin32-311-cp314-cp314-win_arm64.whl", hash = "sha256:a508e2d9025764a8270f93111a970e1d0fbfc33f4153b388bb649b7eec4f9b42", size = 8932540, upload-time = "2025-07-14T20:13:36.379Z" },
+]
+
+[[package]]
 name = "pyyaml"
 version = "6.0.3"
 source = { registry = "https://pypi.org/simple" }
@@ -451,6 +501,15 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/37/e6/90b2b33419f59d0f2c4c8a48a4b74b460709a557e8e0064cf33ad894f983/ruff-0.15.8-py3-none-win32.whl", hash = "sha256:bc1f0a51254ba21767bfa9a8b5013ca8149dcf38092e6a9eb704d876de94dc34", size = 10571959, upload-time = "2026-03-26T18:39:36.117Z" },
     { url = "https://files.pythonhosted.org/packages/1f/a2/ef467cb77099062317154c63f234b8a7baf7cb690b99af760c5b68b9ee7f/ruff-0.15.8-py3-none-win_amd64.whl", hash = "sha256:04f79eff02a72db209d47d665ba7ebcad609d8918a134f86cb13dd132159fc89", size = 11743893, upload-time = "2026-03-26T18:39:25.01Z" },
     { url = "https://files.pythonhosted.org/packages/15/e2/77be4fff062fa78d9b2a4dea85d14785dac5f1d0c1fb58ed52331f0ebe28/ruff-0.15.8-py3-none-win_arm64.whl", hash = "sha256:cf891fa8e3bb430c0e7fac93851a5978fc99c8fa2c053b57b118972866f8e5f2", size = 11048175, upload-time = "2026-03-26T18:40:01.06Z" },
+]
+
+[[package]]
+name = "telegram-text"
+version = "0.2.0"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/6e/cf/b707b994ecb759a533e479e57e59ebcf6e806643fff5a53f05743ae817ac/telegram_text-0.2.0.tar.gz", hash = "sha256:ee295a35f2c77246dd9a80c5e1a8deccc598958dff35740697901c632c6121fa", size = 7943, upload-time = "2024-01-13T15:22:44.5Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/2a/1e/88e9126640be7ddfa423d9ae7ac559577ab8877d45e1d32907c02602cdb3/telegram_text-0.2.0-py3-none-any.whl", hash = "sha256:5752744dc5f91f3f7f0ec1becbf10adb86d586d9338e0aef74fd76a7261283ca", size = 9059, upload-time = "2024-01-13T15:22:42.895Z" },
 ]
 
 [[package]]

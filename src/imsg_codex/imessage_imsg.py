@@ -14,7 +14,7 @@ from dataclasses import dataclass
 from typing import Any
 
 from .codex import generate_reply
-from .env_config import get_env, get_env_bool
+from .env_config import get_env, get_env_bool, get_env_optional
 
 LOG = logging.getLogger(__name__)
 
@@ -32,9 +32,9 @@ def resolve_config() -> IMessageConfig:
     """Read listener and transport configuration from env."""
 
     return IMessageConfig(
-        enabled=get_env_bool("IMESSAGE_ENABLED", default=True),
-        binary=get_env("IMSG_BIN", default="imsg") or "imsg",
-        log_level=get_env("IMSG_LOG_LEVEL", default="info") or "info",
+        enabled=get_env_bool("IMESSAGE_ENABLED"),
+        binary=get_env("IMSG_BIN"),
+        log_level=get_env_optional("IMSG_LOG_LEVEL") or "info",
     )
 
 

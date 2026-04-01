@@ -23,7 +23,7 @@ THREAD_LOCK_TTL = timedelta(minutes=30)
 ReasoningEffort = Literal["minimal", "low", "medium", "high"]
 
 
-@dataclass(slots=True)
+@dataclass
 class WorkerConfig:
     model: str
     codex_cwd: str
@@ -32,7 +32,7 @@ class WorkerConfig:
 
 
 def resolve_reasoning_effort() -> ReasoningEffort:
-    configured = get_env("CODEX_REASONING_EFFORT", default="medium") or "medium"
+    configured = get_env("CODEX_REASONING_EFFORT")
     if configured == "minimal":
         return "minimal"
     if configured == "low":
@@ -50,16 +50,10 @@ def resolve_reasoning_effort() -> ReasoningEffort:
 
 def resolve_config() -> WorkerConfig:
     return WorkerConfig(
-        model=get_env("CODEX_MODEL", default="gpt-5.4-mini") or "gpt-5.4-mini",
-        codex_cwd=get_env("CODEX_CWD", default=".") or ".",
+        model=get_env("CODEX_MODEL"),
+        codex_cwd=get_env("CODEX_CWD"),
         reasoning_effort=resolve_reasoning_effort(),
-        developer_instructions=(
-            get_env(
-                "CODEX_DEVELOPER_INSTRUCTIONS",
-                default=("You are helperful assistant. "),
-            )
-            or ""
-        ),
+        developer_instructions=get_env("CODEX_DEVELOPER_INSTRUCTIONS"),
     )
 
 

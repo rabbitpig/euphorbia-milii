@@ -31,7 +31,7 @@ class ListenerResult:
 
 def resolve_verbose() -> bool:
     load_dotenv()
-    return get_env_bool("CODEX_VERBOSE", "TDLIB_VERBOSE")
+    return get_env_bool("CODEX_VERBOSE")
 
 
 def run_listener(
@@ -144,6 +144,11 @@ def main() -> int:
 
     for result in completed.values():
         if result.error is not None:
+            LOG.exception(
+                "%s listener failed with exception:\n%s",
+                result.name,
+                result.traceback_text,
+            )
             return 1
         if result.rc is not None and result.rc != 0:
             return result.rc

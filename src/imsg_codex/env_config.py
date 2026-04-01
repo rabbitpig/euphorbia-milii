@@ -45,7 +45,14 @@ def parse_env_value(value: str) -> str:
     return value
 
 
-def get_env(*names: str, default: str | None = None) -> str | None:
+def get_env(*names: str) -> str:
+    value = get_env_optional(*names)
+    if value is None:
+        raise ValueError(f"Missing required environment variable: one of {names}")
+    return value
+
+
+def get_env_optional(*names: str, default: str | None = None) -> str | None:
     for name in names:
         value = os.environ.get(name)
         if value is None:
@@ -57,21 +64,35 @@ def get_env(*names: str, default: str | None = None) -> str | None:
     return default
 
 
-def get_env_int(*names: str, default: int | None = None) -> int | None:
-    value = get_env(*names)
+def get_env_int(*names: str) -> int:
+    return int(get_env(*names))
+
+
+def get_env_int_optional(*names: str, default: int | None = None) -> int | None:
+    value = get_env_optional(*names)
     if value is None:
         return default
     return int(value)
 
 
-def get_env_bool(*names: str, default: bool = False) -> bool:
-    value = get_env(*names)
+def get_env_bool(*names: str) -> bool:
+    return get_env(*names).lower() in TRUE_VALUES
+
+
+def get_env_bool_optional(*names: str, default: bool = False) -> bool:
+    value = get_env_optional(*names)
     if value is None:
         return default
     return value.lower() in TRUE_VALUES
 
 
-def get_env_list(*names: str, default: Sequence[str] | None = None) -> list[str]:
+def get_env_list(*names: str) -> list[str]:
+    return [item.strip() for item in get_env(*names).split(",") if item.strip()]
+
+
+def get_env_list_optional(
+    *names: str, default: Sequence[str] | None = None
+) -> list[str]:
     value = get_env(*names)
     if value is None:
         return list(default) if default is not None else []
