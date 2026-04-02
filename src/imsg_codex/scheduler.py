@@ -84,7 +84,7 @@ def create_scheduler() -> BackgroundScheduler:
     scheduler = BackgroundScheduler()
     scheduler.add_job(
         run_hourly_example_task,
-        trigger=CronTrigger(minute=15),
+        trigger=CronTrigger(minute=3),
         id="hourly-example-task",
         replace_existing=True,
         max_instances=1,
