@@ -5,11 +5,12 @@ from __future__ import annotations
 
 import base64
 import contextlib
+import fcntl
 import logging
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
-from typing import Literal
+from typing import Literal, TextIO
 
 from openai_codex_sdk import Codex, ThreadOptions
 
@@ -118,31 +119,31 @@ def _thread_lock_path(biz_id: str) -> Path:
     return Path(config.channel_thread_lock_dir, f"{encoded}.lock")
 
 
-def _acquire_thread_lock(biz_id: str) -> Path | None:
-    config = resolve_config()
-
+def _acquire_thread_lock(biz_id: str) -> TextIO | None:
     lock_path = _thread_lock_path(biz_id)
-    # TODO 这里锁的实现是否存在问题
     lock_path.parent.mkdir(parents=True, exist_ok=True)
 
     now = datetime.now(UTC)
-    if lock_path.exists():
-        raw_value = lock_path.read_text(encoding="utf-8").strip()
-        if raw_value:
-            with contextlib.suppress(ValueError):
-                locked_at = datetime.fromtimestamp(float(raw_value), tz=UTC)
-                if now - locked_at < config.channel_thread_lock_ttl:
-                    return None
-        lock_path.unlink(missing_ok=True)
+    lock_file = lock_path.open("a+", encoding="utf-8")
+    try:
+        fcntl.flock(lock_file.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except BlockingIOError:
+        lock_file.close()
+        return None
 
-    lock_path.write_text(str(now.timestamp()), encoding="utf-8")
-    return lock_path
+    lock_file.seek(0)
+    lock_file.truncate()
+    lock_file.write(str(now.timestamp()))
+    lock_file.flush()
+    return lock_file
 
 
-def _release_thread_lock(lock_path: Path | None) -> None:
-    if lock_path is None:
+def _release_thread_lock(lock_file: TextIO | None) -> None:
+    if lock_file is None:
         return
-    lock_path.unlink(missing_ok=True)
+    with contextlib.suppress(OSError):
+        fcntl.flock(lock_file.fileno(), fcntl.LOCK_UN)
+    lock_file.close()
 
 
 async def generate_reply(
@@ -166,6 +167,14 @@ async def generate_reply(
 
     try:
         result = await thread.run(message)
+        if result.usage is not None:
+            LOG.info(
+                "codex usage biz_id=%s input_tokens=%s cached_input_tokens=%s output_tokens=%s",
+                biz_id,
+                result.usage.input_tokens,
+                result.usage.cached_input_tokens,
+                result.usage.output_tokens,
+            )
 
         if thread_id is None and biz_id is not None:
             if thread.id is None:
