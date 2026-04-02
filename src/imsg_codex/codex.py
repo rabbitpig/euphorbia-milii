@@ -146,6 +146,24 @@ def _release_thread_lock(lock_file: TextIO | None) -> None:
     lock_file.close()
 
 
+def _format_compact_number(value: int) -> str:
+    if value >= 1_000_000:
+        return f"{value / 1_000_000:.1f}".rstrip("0").rstrip(".") + "m"
+    if value >= 1_000:
+        return f"{value / 1_000:.1f}".rstrip("0").rstrip(".") + "k"
+    return str(value)
+
+
+def _format_usage_suffix(
+    input_tokens: int, cached_input_tokens: int, output_tokens: int
+) -> str:
+    return (
+        f"\n\n({_format_compact_number(input_tokens)}"
+        f"/{_format_compact_number(cached_input_tokens)}"
+        f"/{_format_compact_number(output_tokens)})"
+    )
+
+
 async def generate_reply(
     biz_id: str,
     message: str,
@@ -183,4 +201,16 @@ async def generate_reply(
     finally:
         _release_thread_lock(lock_path)
 
-    return result.final_response.strip() if result.final_response else None
+    usage_suffix = ""
+    if result.usage is not None:
+        usage_suffix = _format_usage_suffix(
+            result.usage.input_tokens,
+            result.usage.cached_input_tokens,
+            result.usage.output_tokens,
+        )
+
+    if result.final_response:
+        return result.final_response.strip() + usage_suffix
+    if usage_suffix:
+        return usage_suffix.strip()
+    return None
