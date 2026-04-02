@@ -14,9 +14,9 @@ from apscheduler.triggers.cron import CronTrigger
 from .codex import generate_reply
 from .env_config import get_env, get_env_bool_optional, get_env_optional
 from .imessage_imsg import IMessageSendTarget, send_message_to_target
+from .telegram import resolve_config
 
 LOG = logging.getLogger(__name__)
-TELEGRAM_NEWS_DIR = Path("runtime/workspace/news/telegram")
 
 
 def _resolve_imessage_target() -> IMessageSendTarget:
@@ -36,9 +36,10 @@ def _resolve_imessage_target() -> IMessageSendTarget:
 
 
 def _previous_hour_directory(now: datetime | None = None) -> Path:
+    config = resolve_config()
     previous_hour = (now or datetime.now()) - timedelta(hours=1)
     return (
-        TELEGRAM_NEWS_DIR
+        Path(config.news_telegram_directory)
         / f"{previous_hour:%Y}"
         / f"{previous_hour:%m}"
         / f"{previous_hour:%d}"
@@ -69,8 +70,8 @@ def resolve_enabled() -> bool:
 
 
 def run_hourly_example_task() -> None:
-    LOG.info("Running scheduled example task at minute 10 of the hour")
     news_directory = _previous_hour_directory()
+    LOG.info("Running scheduled task for news directory: %s", news_directory)
     prompt = _build_summary_prompt(news_directory)
     biz_id = get_env("SCHEDULER_CODEX_BIZ_ID")
     summary = asyncio.run(generate_reply(biz_id, prompt))
@@ -83,7 +84,7 @@ def create_scheduler() -> BackgroundScheduler:
     scheduler = BackgroundScheduler()
     scheduler.add_job(
         run_hourly_example_task,
-        trigger=CronTrigger(minute=3),
+        trigger=CronTrigger(minute=15),
         id="hourly-example-task",
         replace_existing=True,
         max_instances=1,
