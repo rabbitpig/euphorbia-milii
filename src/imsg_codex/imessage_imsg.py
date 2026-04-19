@@ -179,8 +179,16 @@ def build_send_command_for_target(
     else:
         raise ValueError(f"unable to determine iMessage target from: {target!r}")
 
-    command.extend(["--text", text])
+    command.extend(["--text", _prepare_text_argument(text)])
     return command
+
+
+def _prepare_text_argument(text: str) -> str:
+    """Normalize text for `imsg send`, whose parser rejects leading `-` values."""
+
+    if text.startswith("-"):
+        return f"\n{text}"
+    return text
 
 
 def send_message_to_target(
